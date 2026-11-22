@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>كابو الدومينو - 2 ضد 2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Cairo', sans-serif; background-color: #0f172a; color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+    .player-btn.selected-win { background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399; color: white; transform: scale(1.03); }
+    .player-btn.selected-lose { background: linear-gradient(135deg, #dc2626, #ef4444); border-color: #f87171; color: white; transform: scale(1.03); }
+    .player-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- الشريط العلوي -->
+  <header class="bg-slate-900/95 sticky top-0 z-30 border-b border-slate-800 px-4 py-3 shadow-lg">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-black text-emerald-400 flex items-center gap-2">
+          <span>🁣</span> كابو الدومينو
+        </h1>
+        <p id="syncStatus" class="text-xs text-slate-400">جاري الاتصال...</p>
+      </div>
+      <button onclick="shareApp()" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl shadow flex items-center gap-1.5 transition">
+        <span>مشاركة الرابط</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto px-4 pt-4 space-y-5">
+
+    <!-- بطاقة تسجيل كابو جديد -->
+    <section class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="font-bold text-base text-slate-200">تسجيل كابو جديد (2 ضد 2)</h2>
+        <button onclick="swapTeams()" class="text-xs bg-slate-700 hover:bg-slate-600 text-amber-300 px-2.5 py-1 rounded-lg font-semibold">
+          ⇄ تبديل الفريقين
+        </button>
+      </div>
+
+      <!-- الفريق الفائز -->
+      <div>
+        <div class="flex justify-between text-xs mb-2">
+          <span class="font-bold text-emerald-400">الفريق الفائز (أعطى الكابو)</span>
+          <span id="winCount" class="text-slate-400">0 / 2</span>
+        </div>
+        <div id="winGrid" class="grid grid-cols-4 gap-2"></div>
+      </div>
+
+      <!-- الفريق الخاسر -->
+      <div>
+        <div class="flex justify-between text-xs mb-2">
+          <span class="font-bold text-rose-400">الفريق الخاسر (أكل الكابو)</span>
+          <span id="loseCount" class="text-slate-400">0 / 2</span>
+        </div>
+        <div id="loseGrid" class="grid grid-cols-4 gap-2"></div>
+      </div>
+
+      <!-- أزرار الحفظ -->
+      <div class="grid grid-cols-2 gap-3 pt-1">
+        <button onclick="recordKapo(1)" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-3 rounded-xl shadow-md transition">
+          + كابو عادي (1)
+        </button>
+        <button onclick="recordKapo(2)" class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold py-3 rounded-xl shadow-md transition">
+          ++ دوبل كابو (2)
+        </button>
+      </div>
+    </section>
+
+    <!-- ملخص الصدارة -->
+    <section class="grid grid-cols-2 gap-3">
+      <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 text-center">
+        <div class="text-xs text-amber-400 font-bold mb-1">👑 ملك الكبوات</div>
+        <div id="topPlayer" class="text-lg font-black text-white">-</div>
+        <div id="topPlayerSub" class="text-xs text-slate-400">0 كابو</div>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3.5 text-center">
+        <div class="text-xs text-sky-400 font-bold mb-1">🤝 أقوى ثنائي</div>
+        <div id="topDuo" class="text-sm font-black text-white mt-1">-</div>
+        <div id="topDuoSub" class="text-xs text-slate-400">0 كابو</div>
+      </div>
+    </section>
+
+    <!-- جدول الترتيب -->
+    <section class="bg-slate-800/80 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+      <div class="px-4 py-3 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="font-bold text-sm text-slate-200">جدول الترتيب العام</h3>
+        <button onclick="copySummary()" class="text-xs text-emerald-400 font-bold hover:underline">📋 نسخ للواتساب</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-900/60 text-slate-400 text-xs">
+            <tr>
+              <th class="py-2.5 px-3">#</th>
+              <th class="py-2.5 px-3">اللاعب</th>
+              <th class="py-2.5 px-2 text-center text-emerald-400">أعطى</th>
+              <th class="py-2.5 px-2 text-center text-rose-400">أكل</th>
+              <th class="py-2.5 px-3 text-center">الصافي</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody" class="divide-y divide-slate-700/60"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- سجل الجولات -->
+    <section class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-sm text-slate-200">سجل الكبوات الأخيرة</h3>
+        <button onclick="clearAllHistory()" class="text-xs text-rose-400 hover:underline">تصفير الكل</button>
+      </div>
+      <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto"></div>
+    </section>
+
+  </main>
+
+  <script>
+    // ضع رابط قاعدة بيانات Firebase هنا (تأكد من وجود / في النهاية)
+    const FIREBASE_URL = "ضع_رابط_فايربيس_هنا";
+
+    const PLAYERS = ["التيما", "سفيان", "الياس", "بولوني", "حبيب", "مصطفى", "بلال", "دلاعة"];
+    let winners = [];
+    let losers = [];
+    let matches = [];
+
+    const isCloudConfigured = FIREBASE_URL.startsWith("https://");
+
+    function renderSelectors() {
+      const winGrid = document.getElementById("winGrid");
+      const loseGrid = document.getElementById("loseGrid");
+      winGrid.innerHTML = "";
+      loseGrid.innerHTML = "";
+
+      PLAYERS.forEach(p => {
+        const isWin = winners.includes(p);
+        const isLose = losers.includes(p);
+
+        const btnW = document.createElement("button");
+        btnW.className = `player-btn py-2 px-1 rounded-xl border border-slate-600 bg-slate-900/70 text-xs font-bold transition ${isWin ? 'selected-win' : ''}`;
+        btnW.textContent = p;
+        btnW.disabled = isLose || (!isWin && winners.length >= 2);
+        btnW.onclick = () => togglePlayer("win", p);
+        winGrid.appendChild(btnW);
+
+        const btnL = document.createElement("button");
+        btnL.className = `player-btn py-2 px-1 rounded-xl border border-slate-600 bg-slate-900/70 text-xs font-bold transition ${isLose ? 'selected-lose' : ''}`;
+        btnL.textContent = p;
+        btnL.disabled = isWin || (!isLose && losers.length >= 2);
+        btnL.onclick = () => togglePlayer("lose", p);
+        loseGrid.appendChild(btnL);
+      });
+
+      document.getElementById("winCount").textContent = `${winners.length} / 2`;
+      document.getElementById("loseCount").textContent = `${losers.length} / 2`;
+    }
+
+    function togglePlayer(team, name) {
+      if (team === "win") {
+        winners = winners.includes(name) ? winners.filter(x => x !== name) : [...winners, name];
+      } else {
+        losers = losers.includes(name) ? losers.filter(x => x !== name) : [...losers, name];
+      }
+      renderSelectors();
+    }
+
+    function swapTeams() {
+      [winners, losers] = [losers, winners];
+      renderSelectors();
+    }
+
+    async function loadData() {
+      const statusEl = document.getElementById("syncStatus");
+      if (!isCloudConfigured) {
+        matches = JSON.parse(localStorage.getItem("domino_matches") || "[]");
+        statusEl.textContent = "وضع محلي (أضف رابط Firebase للمزامنة)";
+        renderStats();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${FIREBASE_URL}matches.json`);
+        const data = await res.json();
+        matches = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+        matches.sort((a, b) => b.timestamp - a.timestamp);
+        statusEl.textContent = "🟢 متصل ومزامن مع الأصدقاء";
+        renderStats();
+      } catch (e) {
+        statusEl.textContent = "⚠️ تعذر الاتصال بالسحابة";
+      }
+    }
+
+    async function recordKapo(points) {
+      if (winners.length !== 2 || losers.length !== 2) {
+        alert("يرجى اختيار لاعبين اثنين للفريق الفائز ولاعبين اثنين للفريق الخاسر.");
+        return;
+      }
+
+      const entry = {
+        winners: [...winners],
+        losers: [...losers],
+        points,
+        timestamp: Date.now()
+      };
+
+      winners = [];
+      losers = [];
+      renderSelectors();
+
+      if (!isCloudConfigured) {
+        entry.id = Date.now().toString();
+        matches.unshift(entry);
+        localStorage.setItem("domino_matches", JSON.stringify(matches));
+        renderStats();
+        return;
+      }
+
+      await fetch(`${FIREBASE_URL}matches.json`, {
+        method: "POST",
+        body: JSON.stringify(entry)
+      });
+      await loadData();
+    }
+
+    async function deleteMatch(id) {
+      if (!confirm("حذف هذه الجولة؟")) return;
+      if (!isCloudConfigured) {
+        matches = matches.filter(m => m.id !== id);
+        localStorage.setItem("domino_matches", JSON.stringify(matches));
+        renderStats();
+        return;
+      }
+      await fetch(`${FIREBASE_URL}matches/${id}.json`, { method: "DELETE" });
+      await loadData();
+    }
+
+    async function clearAllHistory() {
+      if (!confirm("هل أنت متأكد من تصفير جميع النتائج؟")) return;
+      if (!isCloudConfigured) {
+        matches = [];
+        localStorage.setItem("domino_matches", "[]");
+        renderStats();
+        return;
+      }
+      await fetch(`${FIREBASE_URL}matches.json`, { method: "DELETE" });
+      await loadData();
+    }
+
+    function renderStats() {
+      const stats = {};
+      const duos = {};
+      PLAYERS.forEach(p => stats[p] = { name: p, gave: 0, took: 0, net: 0 });
+
+      matches.forEach(m => {
+        const pts = m.points || 1;
+        m.winners.forEach(w => { if (stats[w]) stats[w].gave += pts; });
+        m.losers.forEach(l => { if (stats[l]) stats[l].took += pts; });
+
+        const duoKey = [...m.winners].sort().join(" و ");
+        duos[duoKey] = (duos[duoKey] || 0) + pts;
+      });
+
+      const sorted = Object.values(stats).map(s => ({ ...s, net: s.gave - s.took }))
+        .sort((a, b) => b.net - a.net || b.gave - a.gave);
+
+      // ملك الكبوات
+      const top = [...sorted].sort((a, b) => b.gave - a.gave)[0];
+      document.getElementById("topPlayer").textContent = top && top.gave > 0 ? top.name : "-";
+      document.getElementById("topPlayerSub").textContent = top ? `${top.gave} كابو` : "0 كابو";
+
+      // أقوى ثنائي
+      const topDuoEntry = Object.entries(duos).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById("topDuo").textContent = topDuoEntry ? topDuoEntry[0] : "-";
+      document.getElementById("topDuoSub").textContent = topDuoEntry ? `${topDuoEntry[1]} كابو مشترك` : "0 كابو";
+
+      // الجدول
+      const tbody = document.getElementById("leaderboardBody");
+      tbody.innerHTML = sorted.map((s, idx) => `
+        <tr class="${idx === 0 && s.net > 0 ? 'bg-emerald-950/30' : ''}">
+          <td class="py-2.5 px-3 font-bold text-slate-400">${idx + 1}</td>
+          <td class="py-2.5 px-3 font-bold text-white">${s.name}</td>
+          <td class="py-2.5 px-2 text-center font-bold text-emerald-400">${s.gave}</td>
+          <td class="py-2.5 px-2 text-center font-bold text-rose-400">${s.took}</td>
+          <td class="py-2.5 px-3 text-center font-black ${s.net > 0 ? 'text-emerald-400' : s.net < 0 ? 'text-rose-400' : 'text-slate-400'}">
+            ${s.net > 0 ? '+' + s.net : s.net}
+          </td>
+        </tr>
+      `).join("");
+
+      // السجل
+      const historyList = document.getElementById("historyList");
+      if (matches.length === 0) {
+        historyList.innerHTML = `<p class="text-center text-xs text-slate-500 py-4">لا توجد كبوات مسجلة بعد</p>`;
+      } else {
+        historyList.innerHTML = matches.map(m => {
+          const time = new Date(m.timestamp).toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="bg-slate-900/70 border border-slate-700/70 rounded-xl p-2.5 flex items-center justify-between text-xs">
+              <div>
+                <span class="text-emerald-400 font-bold">${m.winners.join(" + ")}</span>
+                <span class="text-slate-400 mx-1">كباو</span>
+                <span class="text-rose-400 font-bold">${m.losers.join(" + ")}</span>
+                <span class="mr-1.5 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                  ${m.points === 2 ? 'دوبل (2)' : 'عادي (1)'}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-500">${time}</span>
+                <button onclick="deleteMatch('${m.id}')" class="text-slate-500 hover:text-rose-400 font-bold px-1">✕</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    function shareApp() {
+      const url = window.location.href;
+      if (navigator.share) {
+        navigator.share({ title: "كابو الدومينو", text: "تابع ترتيب الكبوات معنا مباشرة:", url });
+      } else {
+        navigator.clipboard.writeText(url);
+        alert("تم نسخ رابط التطبيق! أرسله لأصدقائك الآن.");
+      }
+    }
+
+    function copySummary() {
+      const stats = {};
+      PLAYERS.forEach(p => stats[p] = { name: p, gave: 0, took: 0, net: 0 });
+      matches.forEach(m => {
+        const pts = m.points || 1;
+        m.winners.forEach(w => stats[w].gave += pts);
+        m.losers.forEach(l => stats[l].took += pts);
+      });
+      const sorted = Object.values(stats).map(s => ({ ...s, net: s.gave - s.took })).sort((a, b) => b.net - a.net);
+      let text = "🁣 *ترتيب كبوات الدومينو* 🁣\n\n";
+      sorted.forEach((s, i) => {
+        text += `${i + 1}. *${s.name}*: أعطى (${s.gave}) | أكل (${s.took}) | الصافي: ${s.net > 0 ? '+' + s.net : s.net}\n`;
+      });
+      navigator.clipboard.writeText(text);
+      alert("تم نسخ الترتيب، يمكنك لصقه في واتساب أو ماسنجر.");
+    }
+
+    renderSelectors();
+    loadData();
+    if (isCloudConfigured) setInterval(loadData, 5000);
+  </script>
+</body>
+</html>
